@@ -1,7 +1,0 @@
-eduPanel/util/LecturerType.class
-eduPanel/WebRootConfig.class
-eduPanel/WebAppInitializer.class
-eduPanel/converter/LecturerTypeConverter.class
-eduPanel/api/LecturerHttpController.class
-eduPanel/WebAppConfig.class
-eduPanel/to/request/LecturerReqTo.class
