@@ -9,6 +9,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 
@@ -16,8 +17,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableWebMvc
 @ComponentScan
 public class WebAppConfig implements WebMvcConfigurer  {
-
-
     @Override
     public void addFormatters(FormatterRegistry registry) {
         registry.addConverter(new LecturerTypeConverter());
@@ -27,4 +26,10 @@ public class WebAppConfig implements WebMvcConfigurer  {
     public StandardServletMultipartResolver multipartResolver(){
          return new StandardServletMultipartResolver();
      }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("/home/thaaruni-dissanayake/Documents/DEP13/my_projects/last-project-EduPanel/edupanel-jave-api/src/main/java/eduPanel/uploads");
+    }
 }

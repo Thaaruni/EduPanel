@@ -4,7 +4,6 @@ import eduPanel.util.LecturerType;
 import eduPanel.validation.LectureImage;
 import jakarta.validation.constraints.*;
 import jakarta.validation.groups.Default;
-import jdk.jfr.DataAmount;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

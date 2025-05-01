@@ -1,5 +1,7 @@
 package eduPanel.util;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 public enum LecturerType {
     FULL_TIME("full-time") , VISITING("visiting");
     private String type;
@@ -8,6 +10,7 @@ public enum LecturerType {
         this.type = type;
     }
 
+    @JsonValue
     public String getType() {
         return type;
     }
