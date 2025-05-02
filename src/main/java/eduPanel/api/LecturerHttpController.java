@@ -6,6 +6,7 @@ import eduPanel.entity.Picture;
 import eduPanel.to.LectureTo;
 import eduPanel.to.request.LecturerReqTo;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/lecturers")
@@ -96,22 +99,41 @@ public class LecturerHttpController {
     }
 
     @GetMapping(produces = "application/json")
-    public void getAllLecturers(){
-
+    public List<LectureTo> getAllLecturers(){
+        //Use JPQL
+        TypedQuery<Lecturer> query =  em.createQuery("SELECT l FROM Lecturer l", Lecturer.class);
+        return getLectureTOList(query);
     }
 
     @GetMapping(value = "/{lecturer-id}" , produces ="application/json")
-    public void getLecturerDetails(@PathVariable("lecturer-id") Integer lecturerId){
+    public LectureTo getLecturerDetails(@PathVariable("lecturer-id") Integer lecturerId){
+        Lecturer lecturer = em.find(Lecturer.class, lecturerId);
+        if(lecturer == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lecturer not found");
+        LectureTo lectureTo = mapper.map(lecturer, LectureTo.class);
+        if(lecturer.getLinkedIn() != null) {lectureTo.setLinkedin(lecturer.getLinkedIn().getUrl() );}
+        if (lecturer.getPicture() != null) {lectureTo.setPicture(lecturer.getPicture().getPicturePath() );}
+        return lectureTo;
 
     }
 
     @GetMapping(params = "type=full-time" , produces = "application/json" )
-    public void getFullTimeLecturer(){
-
+    public List<LectureTo> getFullTimeLecturer(){
+        TypedQuery<Lecturer> query =  em.createQuery("SELECT l FROM Lecturer l WHERE l.type = eduPanel.util.LecturerType.FULL_TIME", Lecturer.class);
+        return getLectureTOList(query);
     }
 
     @GetMapping(params = "type=visiting" , produces = "application/json")
-    public void getVisitingLecturer(){
+    public List<LectureTo> getVisitingLecturer(){
+        TypedQuery<Lecturer> query =  em.createQuery("SELECT l FROM Lecturer l WHERE l.type = eduPanel.util.LecturerType.VISITING", Lecturer.class);
+        return getLectureTOList(query);
+    }
 
+    private List<LectureTo> getLectureTOList(TypedQuery<Lecturer> query) {
+        return query.getResultStream().map(lectureEntity ->{
+            LectureTo lectureTo = mapper.map(lectureEntity, LectureTo.class);
+            if(lectureEntity.getLinkedIn() != null) {lectureTo.setLinkedin(lectureEntity.getLinkedIn().getUrl() );}
+            if (lectureEntity.getPicture() != null) {lectureTo.setPicture(lectureEntity.getPicture().getPicturePath() );}
+            return lectureTo;
+        }).collect(Collectors.toList());
     }
 }
