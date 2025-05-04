@@ -15,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -83,20 +84,136 @@ public class LecturerHttpController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PatchMapping(value = "/{lecturer-id}" , consumes = "multipart/form-data")
-    public void updateLecturerDetailsViaMultipart(@PathVariable("lecturer-id") Integer lecturerId){
+    @PatchMapping(value = "/{lecturer-id}", consumes = "multipart/form-data")
+    public void updateLecturerDetailsViaMultipart(
+            @PathVariable("lecturer-id") Integer lecturerId,
+            @ModelAttribute @Validated(LecturerReqTo.Update.class) LecturerReqTo lecturerReqTo) {
+
+        Lecturer currentLecturer = em.find(Lecturer.class, lecturerId);
+        if (currentLecturer == null)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lecturer not found");
+
+        em.getTransaction().begin();
+        try {
+            Lecturer newLecturer = mapper.map(lecturerReqTo, Lecturer.class);
+            newLecturer.setId(lecturerId);
+            newLecturer.setPicture(null);
+            newLecturer.setLinkedIn(null);
+
+            if(lecturerReqTo.getLinkedin() != null) {
+                newLecturer.setLinkedIn(new LinkedIn(newLecturer , lecturerReqTo.getLinkedin() ));
+            }
+            if(lecturerReqTo.getPicture() != null) {
+                newLecturer.setPicture(new Picture(newLecturer , "lecturers/"+ lecturerId ));
+            }
+
+            if(newLecturer.getLinkedIn() != null && currentLecturer.getLinkedIn() == null) {
+                em.persist(newLecturer.getLinkedIn());
+            }else if(newLecturer.getLinkedIn() == null && currentLecturer.getLinkedIn() != null) {
+               em.remove(currentLecturer.getLinkedIn());
+            }else if(newLecturer.getLinkedIn() != null) {
+               em.merge(newLecturer.getLinkedIn());
+            }
+
+            if (newLecturer.getPicture() != null && currentLecturer.getPicture() == null) {
+                // Case 1: New picture is added, no old picture exists
+                String picturePath = "lecturers/" + lecturerId + ".png";
+                Path savePath = Paths.get("/home/thaaruni-dissanayake/Documents/DEP13/my_projects/last-project-EduPanel/edupanel-jave-api/src/main/java/eduPanel/uploads/lecturers", picturePath);
+                Files.createDirectories(savePath.getParent());
+                lecturerReqTo.getPicture().transferTo(savePath.toFile());
+
+                newLecturer.setPicture(new Picture(newLecturer, picturePath));
+                em.persist(newLecturer.getPicture());
+
+            } else if (newLecturer.getPicture() == null && currentLecturer.getPicture() != null) {
+                // Case 2: Picture is removed
+                Path oldPath = Paths.get("D:/edu-panel/uploads", currentLecturer.getPicture().getPicturePath());
+                Files.deleteIfExists(oldPath);
+                em.remove(currentLecturer.getPicture());
+
+            } else if (newLecturer.getPicture() != null) {
+                // Case 3: Picture is updated
+                String picturePath = "lecturers/" + lecturerId + ".png";
+                Path savePath = Paths.get("D:/edu-panel/uploads", picturePath);
+                Files.createDirectories(savePath.getParent());
+                lecturerReqTo.getPicture().transferTo(savePath.toFile());
+
+                newLecturer.getPicture().setPicturePath(picturePath);
+                em.merge(newLecturer.getPicture());
+            }
+
+
+
+            em.merge(newLecturer);
+            em.getTransaction().commit();
+        } catch (Throwable e) {
+            em.getTransaction().rollback();
+            throw new RuntimeException(e);
+        }
     }
+
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PatchMapping(value = "/{lecturer-id}" , consumes = "application/json")
-    public void updateLecturerDetailsViaJson(@PathVariable("lecturer-id") Integer lecturerId){
+    public void updateLecturerDetailsViaJson(@PathVariable("lecturer-id") Integer lecturerId,
+    @RequestBody @Validated LectureTo lecturerTo){
+        Lecturer currentLecturer = em.find(Lecturer.class, lecturerId);
+        if(currentLecturer == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lecturer not found");
+        em.getTransaction().begin();
+        try{
+            Lecturer newLecturer = mapper.map(lecturerTo, Lecturer.class);
+            newLecturer.setId(lecturerId);
+            newLecturer.setPicture(currentLecturer.getPicture());
+            newLecturer.setLinkedIn(lecturerTo.getLinkedin() != null ? new LinkedIn(newLecturer, lecturerTo.getLinkedin()) : null);
+            if(currentLecturer.getLinkedIn() != null && newLecturer.getLinkedIn() == null) {
+                em.remove(currentLecturer.getLinkedIn());
+            }else if(currentLecturer.getLinkedIn() == null && newLecturer.getLinkedIn() != null) {
+                em.persist(newLecturer.getLinkedIn());
+            }else if(newLecturer.getLinkedIn() != null ) {
+                em.merge(newLecturer.getLinkedIn());
+            }
+            em.merge(newLecturer);
+            em.getTransaction().commit();
+        }catch(Throwable e){
+            em.getTransaction().rollback();
+            throw new RuntimeException(e);
+        }
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{lecturer-id}")
-    public void deleteLecturer(@PathVariable("lecturer-id") Integer lecturerId){
+    public void deleteLecturer(@PathVariable("lecturer-id") Integer lecturerId) {
+        Lecturer lecturer = em.find(Lecturer.class, lecturerId);
+        if (lecturer == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        em.getTransaction().begin();
+        try {
+            // Handle picture file deletion
+            if (lecturer.getPicture() != null) {
+                String relativePath = lecturer.getPicture().getPicturePath(); // e.g., "lecturers/19.png"
+                Path picturePath = Paths.get("/home/thaaruni-dissanayake/Documents/DEP13/my_projects/last-project-EduPanel/edupanel-jave-api/src/main/java/eduPanel/uploads ", relativePath); // Change to your base path
+                File pictureFile = picturePath.toFile();
+                if (pictureFile.exists()) {
+                    pictureFile.delete();
+                }
 
+                // Optionally remove the Picture entity
+                em.remove(lecturer.getPicture());
+            }
+
+            // Remove LinkedIn entity if exists
+            if (lecturer.getLinkedIn() != null) {
+                em.remove(lecturer.getLinkedIn());
+            }
+
+            // Remove lecturer
+            em.remove(lecturer);
+            em.getTransaction().commit();
+        } catch (Throwable e) {
+            em.getTransaction().rollback();
+            throw new RuntimeException(e);
+        }
     }
+
 
     @GetMapping(produces = "application/json")
     public List<LectureTo> getAllLecturers(){
