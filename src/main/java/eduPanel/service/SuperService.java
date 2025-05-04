@@ -1,4 +1,4 @@
 package eduPanel.service;
 
-public class SuperService {
+public interface SuperService {
 }

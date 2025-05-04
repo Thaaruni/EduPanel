@@ -1,10 +1,11 @@
 package eduPanel.repository;
 
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Component;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
+
 
 @Component
 public class QueryRepositoryImpl implements QueryRepository {
