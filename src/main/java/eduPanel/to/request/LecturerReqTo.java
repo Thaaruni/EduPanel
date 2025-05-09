@@ -17,7 +17,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LecturerReqTo implements Serializable {
-
+   private Integer id;
    @NotBlank(message = "Name camt be empty")
    @Pattern(regexp = "^[A-Za-z]{2,}$" , message ="Invalid name")
    private String name;
@@ -41,4 +41,14 @@ public class LecturerReqTo implements Serializable {
 
    public interface Create extends Default {}
    public interface Update extends Default {}
+
+   public LecturerReqTo(String name, String designation, String qualification, LecturerType type, Integer displayOrder, MultipartFile picture, String linkedin) {
+      this.name = name;
+      this.designation = designation;
+      this.qualification = qualification;
+      this.type = type;
+      this.displayOrder = displayOrder;
+      this.picture = picture;
+      this.linkedin = linkedin;
+   }
 }

@@ -12,7 +12,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @Entity
 @Table(name = "linkedin")
-public class LinkedIn implements Serializable {
+public class LinkedIn implements SuperEntity {
     @Id
     @OneToOne
     @JoinColumn(name="lecture_id" , referencedColumnName = "id")

@@ -15,11 +15,11 @@ public interface LecturerService extends SuperService {
 
     void updateLecturerDetails(LecturerReqTo lecturerReqTO);
 //
-//    void updateLecturerDetails(LectureTo lecturerTO);
+    void updateLecturerDetails(LectureTo lecturerTO);
 //
-//    void deleteLecturer(Integer lecturerId);
+   void deleteLecturer(Integer lecturerId);
 //
-//    LectureTo getLecturerDetails(Integer lecturerId);
+    LectureTo getLecturerDetails(Integer lecturerId);
 //
-//    List<LectureTo> getLecturers(LecturerType type);
+    List<LectureTo> getLecturers(LecturerType type);
 }
