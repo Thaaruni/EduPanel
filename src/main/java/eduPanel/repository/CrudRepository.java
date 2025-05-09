@@ -8,6 +8,15 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 
+
+package lk.ijse.dep11.edupanel.repository;
+
+import lk.ijse.dep11.edupanel.entity.SuperEntity;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.Optional;
+
 public interface CrudRepository extends SuperRepository {
     SuperEntity save(SuperEntity entity);
 
