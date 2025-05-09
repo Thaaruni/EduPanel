@@ -15,9 +15,8 @@ import java.io.Serializable;
 public class LinkedIn implements SuperEntity {
     @Id
     @OneToOne
-    @JoinColumn(name="lecture_id" , referencedColumnName = "id")
+    @JoinColumn(name = "lecturer_id", referencedColumnName = "id")
     private Lecturer lecturer;
-    @Column(nullable = false, length = 2000 )
+    @Column(nullable = false, length = 2000)
     private String url;
-
 }

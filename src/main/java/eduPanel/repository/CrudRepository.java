@@ -1,34 +1,27 @@
 package eduPanel.repository;
 
-
-
 import eduPanel.entity.SuperEntity;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
 
 
-package lk.ijse.dep11.edupanel.repository;
+public interface CrudRepository<T extends SuperEntity, ID extends Serializable> extends SuperRepository {
 
-import lk.ijse.dep11.edupanel.entity.SuperEntity;
+    EntityManager getEntityManager();
 
-import java.io.Serializable;
-import java.util.List;
-import java.util.Optional;
+    T save(T entity);
 
-public interface CrudRepository extends SuperRepository {
-    SuperEntity save(SuperEntity entity);
+    void update(T entity);
 
-    void update(SuperEntity entity);
+    void deleteById(ID pk);
 
-    void deleteById(Serializable pk);
+    boolean existsById(ID pk);
 
-    boolean existsById(Serializable pk);
+    Optional<T> findById(ID pk);
 
-    Optional<SuperEntity> findById(Serializable pk);
-
-    List<SuperEntity> findAll();
+    List<T> findAll();
 
     long count();
 }
