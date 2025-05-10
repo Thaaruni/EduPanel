@@ -29,7 +29,7 @@ class TransformerTest {
                 LecturerType.VISITING,
                 5);
         lecturer.setLinkedIn(new LinkedIn(lecturer, "https://linkedin.com/nuwan"));
-        LectureTo LectureTo = transformer.toLectureTo(lecturer);
+        LectureTo LectureTo = transformer.toLecturerTo(lecturer);
 
         assertEquals(lecturer.getId(), LectureTo.getId());
         assertEquals(lecturer.getName(), LectureTo.getName());

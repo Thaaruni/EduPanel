@@ -13,11 +13,12 @@ import org.springframework.web.context.annotation.RequestScope;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class WebRootConfig  {
+public class WebRootConfig {
+
     @Bean(destroyMethod = "close")
     public EntityManagerFactory entityManagerFactory(){
         return Persistence.createEntityManagerFactory("default");
-    };
+    }
 
     @Bean(destroyMethod = "close")
     @RequestScope
@@ -29,4 +30,5 @@ public class WebRootConfig  {
     public ModelMapper modelMapper(){
         return new ModelMapper();
     }
+
 }

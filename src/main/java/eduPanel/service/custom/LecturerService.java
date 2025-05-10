@@ -14,12 +14,12 @@ public interface LecturerService extends SuperService {
   LectureTo saveLecturer(LecturerReqTo lecturerReqTO);
 
     void updateLecturerDetails(LecturerReqTo lecturerReqTO);
-//
-    void updateLecturerDetails(LectureTo lecturerTO);
-//
+
+    void updateLecturerDetails(LectureTo lectureTO);
+
    void deleteLecturer(Integer lecturerId);
-//
+
     LectureTo getLecturerDetails(Integer lecturerId);
-//
+
     List<LectureTo> getLecturers(LecturerType type);
 }

@@ -8,7 +8,7 @@ import eduPanel.entity.Picture;
 import eduPanel.to.LectureTo;
 import eduPanel.to.request.LecturerReqTo;
 import org.modelmapper.ModelMapper;
-import com.google.rpc.Help;
+
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -27,17 +27,15 @@ public class Transformer {
                 .setConverter(ctx -> ctx.getSource() != null ? new LinkedIn(null, ctx.getSource()) : null);
     }
 
-    public Lecturer fromLecturerReqTo(LecturerReqTo lecturerReqTo){
-        Lecturer lecturer = mapper.map(lecturerReqTo, Lecturer.class);
-        if (lecturerReqTo.getLinkedin() != null) lecturer.getLinkedIn().setLecturer(lecturer);
-
+    public Lecturer fromLecturerReqTo(LecturerReqTo lecturerReqTO){
+        Lecturer lecturer = mapper.map(lecturerReqTO, Lecturer.class);
+        if (lecturerReqTO.getLinkedin() != null) lecturer.getLinkedIn().setLecturer(lecturer);
         return lecturer;
     }
 
-    public Lecturer fromLecturerTo(LectureTo lectureTo){
-
-        Lecturer lecturer = mapper.map(lectureTo, Lecturer.class);
-        if (lectureTo.getLinkedin() != null) lecturer.getLinkedIn().setLecturer(lecturer);
+    public Lecturer fromLecturerTo(LectureTo lecturerTO){
+        Lecturer lecturer = mapper.map(lecturerTO, Lecturer.class);
+        if (lecturerTO.getLinkedin() != null) lecturer.getLinkedIn().setLecturer(lecturer);
         return lecturer;
     }
 
@@ -45,7 +43,7 @@ public class Transformer {
         return mapper.map(lecturer, LectureTo.class);
     }
 
-    public List<LectureTo> toLecturerTOList(List<Lecturer> lecturerList){
+    public List<LectureTo> toLectureToList(List<Lecturer> lecturerList){
         return lecturerList.stream().map(this::toLecturerTo).collect(Collectors.toList());
     }
 

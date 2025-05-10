@@ -24,7 +24,7 @@ public class LectureTo implements Serializable {
     @Length(min = 3 , message ="Invalid designation")
     private String designation;
     @NotBlank(message = "Qualification cant be empty")
-    @Length(min = 3 , message ="Invalid qualification")
+    @Length(min = 2 , message ="Invalid qualification")
     private String qualification;
     @NotNull(message = "Type should be full time or visiting")
     private LecturerType type;

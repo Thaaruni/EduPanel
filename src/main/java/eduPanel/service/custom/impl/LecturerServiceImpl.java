@@ -5,184 +5,234 @@ import eduPanel.entity.Lecturer;
 import eduPanel.entity.LinkedIn;
 import eduPanel.entity.Picture;
 import eduPanel.exception.AppException;
-import eduPanel.repository.LecturerRepository;
-import eduPanel.repository.LinkedInRepository;
-import eduPanel.repository.PictureRepository;
+import eduPanel.repository.RepositoryFactory;
+import eduPanel.repository.custom.LecturerRepository;
+import eduPanel.repository.custom.LinkedInRepository;
+import eduPanel.repository.custom.PictureRepository;
 import eduPanel.service.custom.LecturerService;
 import eduPanel.service.util.Transformer;
+import eduPanel.store.AppStore;
 import eduPanel.to.LectureTo;
-import eduPanel.to.request.LecturerReqTo;
+import eduPanel.to.request.LecturerReqTo ;
 import eduPanel.util.LecturerType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
-@Service
-@Transactional
 public class LecturerServiceImpl implements LecturerService {
 
-    private final LecturerRepository lecturerRepository;
-    private final LinkedInRepository linkedInRepository;
-    private final PictureRepository pictureRepository;
-    private final Transformer transformer;
+    private final LecturerRepository lecturerRepository = RepositoryFactory.getInstance()
+            .getRepository(RepositoryFactory.RepositoryType.LECTURER);
+    private final LinkedInRepository linkedInRepository = RepositoryFactory.getInstance()
+            .getRepository(RepositoryFactory.RepositoryType.LINKEDIN);
+    private final PictureRepository pictureRepository = RepositoryFactory.getInstance()
+            .getRepository(RepositoryFactory.RepositoryType.PICTURE);
+    private final Transformer transformer = new Transformer();
 
-
-    public LecturerServiceImpl(LecturerRepository lecturerRepository, LinkedInRepository linkedInRepository, PictureRepository pictureRepository, Transformer transformer) {
-        this.lecturerRepository = lecturerRepository;
-        this.linkedInRepository = linkedInRepository;
-        this.pictureRepository = pictureRepository;
-        this.transformer = transformer;
-
+    public LecturerServiceImpl() {
+        lecturerRepository.setEntityManager(AppStore.getEntityManager());
+        linkedInRepository.setEntityManager(AppStore.getEntityManager());
+        pictureRepository.setEntityManager(AppStore.getEntityManager());
     }
 
     @Override
     public LectureTo saveLecturer(LecturerReqTo LecturerReqTo) {
-        Lecturer lecturer = transformer.fromLecturerReqTo(LecturerReqTo);
-        lecturerRepository.save(lecturer);
+        AppStore.getEntityManager().getTransaction().begin();
+        try {
+            Lecturer lecturer = transformer.fromLecturerReqTo(LecturerReqTo);
+            lecturerRepository.save(lecturer);
 
-        if (LecturerReqTo.getLinkedin() != null) {
-            linkedInRepository.save(lecturer.getLinkedIn());
-        }
-
-        String pictureUrl = null;
-        if (LecturerReqTo.getPicture() != null && !LecturerReqTo.getPicture().isEmpty()) {
-            String picturePath = "lecturers/" + lecturer.getId() + ".png";
-            Path savePath = Paths.get("/home/thaaruni-dissanayake/Documents/DEP13/my_projects/last-project-eduPanel/eduPanel-jave-api/src/main/java/eduPanel/uploads", picturePath); // Change this to your actual upload location
-
-            try {
-                Files.createDirectories(savePath.getParent());
-                LecturerReqTo.getPicture().transferTo(savePath.toFile());
-            } catch (IOException e) {
-                throw new AppException(500, "Failed to upload the image", e);
+            if (LecturerReqTo.getLinkedin() != null) {
+                linkedInRepository.save(lecturer.getLinkedIn());
             }
 
-            Picture picture = new Picture(lecturer, picturePath);
-            pictureRepository.save(picture);
-            pictureUrl = "/uploads/" + picturePath; // This assumes Spring is serving static files from /uploads
-        }
+            String pictureUrl = null;
+            if (LecturerReqTo.getPicture() != null) {
+                // Save Picture entity
+                Picture picture = new Picture(lecturer, "lecturers/" + lecturer.getId() );
+                pictureRepository.save(picture);
 
-        LectureTo LectureTo = transformer.toLectureTo(lecturer);
-        LectureTo.setPicture(pictureUrl);
-        return LectureTo;
+                // Ensure upload directory exists
+                Path uploadsDir = Paths.get("uploads", "lecturers");
+                if (!Files.exists(uploadsDir)) {
+                    Files.createDirectories(uploadsDir);
+                }
+
+                // Save file to disk
+                Path picturePath = uploadsDir.resolve(lecturer.getId() + ".png");
+                Files.copy(LecturerReqTo.getPicture().getInputStream(), picturePath, StandardCopyOption.REPLACE_EXISTING);
+
+                // Set local file path as URL (could be served from a controller or directly if using static handler)
+                pictureUrl = "/home/thaaruni-dissanayake/Documents/DEP13/my_projects/edupanel-jave-api/src/main/java/eduPanel/uploads/lecturers" + lecturer.getId() + ".png";
+            }
+
+            AppStore.getEntityManager().getTransaction().commit();
+
+            LectureTo lectureTo = transformer.toLecturerTo(lecturer);
+            lectureTo.setPicture(pictureUrl);
+            return lectureTo;
+        } catch (Throwable t) {
+            AppStore.getEntityManager().getTransaction().rollback();
+            throw new AppException(500, "Failed to save the lecturer", t);
+        }
+    }
+
+
+
+    @Override
+    public void updateLecturerDetails(LecturerReqTo lecturerReqTo) {
+        Optional<Lecturer> optLecturer = lecturerRepository.findById(lecturerReqTo.getId());
+        if (optLecturer.isEmpty()) throw new AppException(404, "No lecturer found");
+        Lecturer currentLecturer = optLecturer.get();
+
+        AppStore.getEntityManager().getTransaction().begin();
+        try {
+            Lecturer newLecturer = transformer.fromLecturerReqTo(lecturerReqTo);
+
+            if (lecturerReqTo.getPicture() != null) {
+                newLecturer.setPicture(new Picture(newLecturer, "lecturers/" + currentLecturer.getId() + ".png"));
+            }
+
+            if (lecturerReqTo.getLinkedin() != null) {
+                newLecturer.setLinkedIn(new LinkedIn(newLecturer, lecturerReqTo.getLinkedin()));
+            }
+
+            updateLinkedIn(currentLecturer, newLecturer);
+
+            // Handle picture logic
+            Path uploadsDir = Paths.get("uploads", "lecturers");
+            if (!Files.exists(uploadsDir)) {
+                Files.createDirectories(uploadsDir);
+            }
+
+            Path picturePath = uploadsDir.resolve(currentLecturer.getId() + ".png");
+
+            if (newLecturer.getPicture() != null && currentLecturer.getPicture() == null) {
+                pictureRepository.save(newLecturer.getPicture());
+                Files.copy(lecturerReqTo.getPicture().getInputStream(), picturePath, StandardCopyOption.REPLACE_EXISTING);
+            } else if (newLecturer.getPicture() == null && currentLecturer.getPicture() != null) {
+                pictureRepository.deleteById(currentLecturer.getId());
+                Files.deleteIfExists(picturePath);
+            } else if (newLecturer.getPicture() != null) {
+                pictureRepository.update(newLecturer.getPicture());
+                Files.copy(lecturerReqTo.getPicture().getInputStream(), picturePath, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            lecturerRepository.update(newLecturer);
+            AppStore.getEntityManager().getTransaction().commit();
+        } catch (Throwable t) {
+            AppStore.getEntityManager().getTransaction().rollback();
+            throw new AppException(500, "Failed to update the lecturer details", t);
+        }
     }
 
     @Override
-    public void updateLecturerDetails(LecturerReqTo LecturerReqTo) {
-        Lecturer currentLecturer = lecturerRepository.findById(LecturerReqTo.getId())
-                .orElseThrow(() -> new AppException(404, "No lecturer associated with the ID"));
-
-        // Remove old picture from filesystem and database
-        if (currentLecturer.getPicture() != null) {
-            String oldPicturePath = currentLecturer.getPicture().getPicturePath();
-            File oldFile = new File("src/main/java/eduPanel/uploads/" + oldPicturePath);
-            if (oldFile.exists()) oldFile.delete();
-            pictureRepository.delete(currentLecturer.getPicture());
-        }
-
-        // Remove old LinkedIn
-        if (currentLecturer.getLinkedIn() != null) {
-            linkedInRepository.delete(currentLecturer.getLinkedIn());
-        }
-
-        // Update lecturer data (except picture and LinkedIn)
-        Lecturer newLecturer = transformer.fromLecturerReqTo(LecturerReqTo);
-        newLecturer.setLinkedIn(null);
-        newLecturer.setPicture(null);
-        newLecturer = lecturerRepository.save(newLecturer);
-
-        // Save new LinkedIn if present
-        if (LecturerReqTo.getLinkedin() != null) {
-            LinkedIn linkedIn = new LinkedIn(newLecturer, LecturerReqTo.getLinkedin());
-            newLecturer.setLinkedIn(linkedInRepository.save(linkedIn));
-        }
-
-        // Save new picture to local uploads directory
-        if (LecturerReqTo.getPicture() != null && !LecturerReqTo.getPicture().isEmpty()) {
-            try {
-                String picturePath = "lecturers/" + newLecturer.getId() + ".png";
-                Path savePath = Paths.get("src/main/java/eduPanel/uploads", picturePath);
-                Files.createDirectories(savePath.getParent());
-                LecturerReqTo.getPicture().transferTo(savePath.toFile());
-
-                Picture picture = new Picture(newLecturer, picturePath);
-                newLecturer.setPicture(pictureRepository.save(picture));
-            } catch (IOException e) {
-                throw new AppException(500, "Failed to save the image locally", e);
-            }
+    public void updateLecturerDetails(LectureTo lectureTo) {
+        Optional<Lecturer> optLecturer = lecturerRepository.findById(lectureTo.getId());
+        if (optLecturer.isEmpty()) throw new AppException(404, "No lecturer found");
+        Lecturer currentLecturer = optLecturer.get();
+        AppStore.getEntityManager().getTransaction().begin();
+        try {
+            Lecturer newLecturer = transformer.fromLecturerTo(lectureTo);
+            newLecturer.setPicture(currentLecturer.getPicture());
+            updateLinkedIn(currentLecturer, newLecturer);
+            lecturerRepository.update(newLecturer);
+            AppStore.getEntityManager().getTransaction().commit();
+        }catch (Throwable t){
+            AppStore.getEntityManager().getTransaction().rollback();
+            throw t;
         }
     }
+
+
 
     @Override
-    public void updateLecturerDetails(LectureTo LectureTo) {
-        Lecturer currentLecturer = lecturerRepository.findById(LectureTo.getId()).orElseThrow(() -> new AppException(404, "No lecturer associated with the id"));
-
-        /* Remove the old linked in */
-        if (currentLecturer.getLinkedIn() != null) {
-            linkedInRepository.delete(currentLecturer.getLinkedIn());
-        }
-
-        Lecturer newLecturer = transformer.fromLectureTo(LectureTo);
-        newLecturer.setLinkedIn(null);
-
-        newLecturer = lecturerRepository.save(newLecturer);
-
-        /* Add a new linked in entry if exists */
-        if (LectureTo.getLinkedin() != null) {
-            LinkedIn linkedIn = new LinkedIn(newLecturer, LectureTo.getLinkedin());
-            newLecturer.setLinkedIn(linkedInRepository.save(linkedIn));
+    public void deleteLecturer(Integer lecturerId) {
+        if (!lecturerRepository.existsById(lecturerId)) throw new AppException(404, "No lecturer found");
+        AppStore.getEntityManager().getTransaction().begin();
+        try {
+            lecturerRepository.deleteById(lecturerId);
+            AppStore.getEntityManager().getTransaction().commit();
+        }catch (Throwable t){
+            AppStore.getEntityManager().getTransaction().rollback();
+            throw t;
         }
     }
-
-
 
     @Override
     public LectureTo getLecturerDetails(Integer lecturerId) {
-        Optional<Lecturer> optLecturer = lecturerRepository.findById(lecturerId);
-        if (optLecturer.isEmpty()) throw new AppException(404, "No lecturer found");
+        AppStore.getEntityManager().getTransaction().begin();
+        try {
+            Optional<Lecturer> optLecturer = lecturerRepository.findById(lecturerId);
+            if (optLecturer.isEmpty()) throw new AppException(404, "No lecturer found");
+            AppStore.getEntityManager().getTransaction().commit();
 
-        LectureTo lectureTo = transformer.toLectureTo(optLecturer.get());
+            Lecturer lecturer = optLecturer.get();
+            LectureTo lectureTo = transformer.toLecturerTo(lecturer);
 
-        if (optLecturer.get().getPicture() != null) {
-            String pictureUrl = "http://localhost:8080/uploads/" + optLecturer.get().getPicture().getPicturePath();
-            lectureTo.setPicture(pictureUrl);
+            if (lecturer.getPicture() != null) {
+                // Set the picture URL to a static endpoint (e.g., served from /uploads/lecturers/)
+                String pictureUrl = "/uploads/lecturers/" + lecturer.getId() + ".png";
+                lectureTo.setPicture(pictureUrl);
+            }
+
+            return lectureTo;
+        } catch (Throwable t) {
+            AppStore.getEntityManager().getTransaction().rollback();
+            throw t;
         }
-
-        return lectureTo;
     }
-
 
     @Override
     public List<LectureTo> getLecturers(LecturerType type) {
-        List<Lecturer> lecturerList;
-
-        if (type != null) {
-            lecturerList = lecturerRepository.findLecturersByType(type);
-        } else {
-            lecturerList = lecturerRepository.findAll();
-        }
-
-        return lecturerList.stream().map(l -> {
-            LectureTo lectureTo = transformer.toLectureTo(l);
-            if (l.getPicture() != null) {
-                String pictureUrl = "http://localhost:8080/uploads/" + l.getPicture().getPicturePath();
-                lectureTo.setPicture(pictureUrl);
+        AppStore.getEntityManager().getTransaction().begin();
+        try {
+            List<Lecturer> lecturerList;
+            if (type == LecturerType.FULL_TIME) {
+                lecturerList = lecturerRepository.findFullTimeLecturers();
+            } else if (type == LecturerType.VISITING) {
+                lecturerList = lecturerRepository.findVisitingLectures();
+            } else {
+                lecturerList = lecturerRepository.findAll();
             }
-            return lectureTo;
-        }).collect(Collectors.toList());
+
+            AppStore.getEntityManager().getTransaction().commit();
+
+            return lecturerList.stream().map(l -> {
+                LectureTo lectureTo = transformer.toLecturerTo(l);
+                if (l.getPicture() != null) {
+                    // Use local path for serving picture
+                    String pictureUrl = "/uploads/lecturers/" + l.getId() + ".png";
+                    lectureTo.setPicture(pictureUrl);
+                }
+                return lectureTo;
+            }).collect(Collectors.toList());
+
+        } catch (Throwable t) {
+            AppStore.getEntityManager().getTransaction().rollback();
+            throw t;
+        }
     }
 
 
-
-
+    private void updateLinkedIn(Lecturer currentLecturer, Lecturer newLecturer){
+        if (newLecturer.getLinkedIn() != null && currentLecturer.getLinkedIn() == null) {
+            linkedInRepository.save(newLecturer.getLinkedIn());
+        } else if (newLecturer.getLinkedIn() == null && currentLecturer.getLinkedIn() != null) {
+            linkedInRepository.deleteById(currentLecturer.getId());
+        } else if (newLecturer.getLinkedIn() != null) {
+            linkedInRepository.update(newLecturer.getLinkedIn());
+        }
+    }
 }

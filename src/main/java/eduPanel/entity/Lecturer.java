@@ -22,7 +22,7 @@ public class Lecturer implements SuperEntity {
     @Column(nullable = false, length = 600)
     private String designation;
     @Column(nullable = false, length = 600)
-    private String qualifications;
+    private String qualification;
     @Column(nullable = false, columnDefinition = "ENUM('FULL_TIME','VISITING')")
     @Enumerated(EnumType.STRING)
     private LecturerType type;
@@ -37,19 +37,19 @@ public class Lecturer implements SuperEntity {
     @OneToOne(mappedBy = "lecturer", cascade = {CascadeType.REMOVE})
     private LinkedIn linkedIn;
 
-    public Lecturer(String name, String designation, String qualifications, LecturerType type, int displayOrder) {
+    public Lecturer(String name, String designation, String qualification, LecturerType type, int displayOrder) {
         this.name = name;
         this.designation = designation;
-        this.qualifications = qualifications;
+        this.qualification = qualification;
         this.type = type;
         this.displayOrder = displayOrder;
     }
 
-    public Lecturer(int id, String name, String designation, String qualifications, LecturerType type, int displayOrder) {
+    public Lecturer(int id, String name, String designation, String qualification, LecturerType type, int displayOrder) {
         this.id = id;
         this.name = name;
         this.designation = designation;
-        this.qualifications = qualifications;
+        this.qualification = qualification;
         this.type = type;
         this.displayOrder = displayOrder;
     }
