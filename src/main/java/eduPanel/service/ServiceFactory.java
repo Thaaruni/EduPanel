@@ -4,7 +4,6 @@ package eduPanel.service;
 
 import eduPanel.service.custom.impl.LecturerServiceImpl;
 
-import jakarta.transaction.NotSupportedException;
 
 public class ServiceFactory {
 

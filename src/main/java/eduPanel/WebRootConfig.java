@@ -1,6 +1,7 @@
 package eduPanel;
 
 import eduPanel.converter.LecturerTypeConverter;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;

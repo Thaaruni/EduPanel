@@ -1,6 +1,7 @@
 package eduPanel.entity;
 
 import eduPanel.util.LecturerType;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
