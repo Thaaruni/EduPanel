@@ -20,4 +20,4 @@ https://documenter.getpostman.com/view/31096465/2sB2qUo5Lz
 
 ### License
 Copyright © 2025 KDT Dissanayake. All Rights Reserved.
-This project is licensed under [MIT](LICENSE.txt) license.
+This project is licensed under [MIT](LICENSE) license.
